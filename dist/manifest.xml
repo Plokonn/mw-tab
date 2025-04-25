@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="TaskPaneApp">
+  <Id>3a08a95c-163c-4a6d-89f9-d27ccc9cef4c</Id>
+  <Version>1.0.0.0</Version>
+  <ProviderName>Musicworks</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="Musicworks"/>
+  <Description DefaultValue="Musicworks Automation."/>
+  <IconUrl DefaultValue="https://www.contoso.com/assets/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://www.contoso.com/assets/icon-64.png"/>
+  <SupportUrl DefaultValue="https://www.musicworks.de"/>
+  <AppDomains>
+    <AppDomain>https://www.musicworks.de</AppDomain>
+    <AppDomain>http://musicworksnas.synology.me:5049</AppDomain>
+  </AppDomains>
+  <Hosts>
+    <Host Name="Workbook"/>
+  </Hosts>
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://www.contoso.com/taskpane.html"/>
+  </DefaultSettings>
+  <Permissions>ReadWriteDocument</Permissions>
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Workbook">
+        <DesktopFormFactor>
+          <GetStarted>
+            <Title resid="GetStarted.Title"/>
+            <Description resid="GetStarted.Description"/>
+            <LearnMoreUrl resid="GetStarted.LearnMoreUrl"/>
+          </GetStarted>
+          <FunctionFile resid="Commands.Url"/>
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <CustomTab id="MW.Automate">
+              <Group id="MW.Automate.Group1">
+                <Label resid="MW.Automate.GroupLabel"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon.Concept.16x16"/>
+                  <bt:Image size="32" resid="Icon.Concept.32x32"/>
+                  <bt:Image size="80" resid="Icon.Concept.80x80"/>
+                </Icon>
+                <Control xsi:type="Button" id="MW.ConceptButton">
+                  <Label resid="MW.ConceptButton.Label"/>
+                  <Supertip>
+                    <Title resid="MW.ConceptButton.Label"/>
+                    <Description resid="MW.ConceptButton.Tooltip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.Concept.16x16"/>
+                    <bt:Image size="32" resid="Icon.Concept.32x32"/>
+                    <bt:Image size="80" resid="Icon.Concept.80x80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <SourceLocation resid="taskpaneUrl"/>
+                  </Action>
+                </Control>
+              </Group>
+              <Label resid="MW.Tab.TabLabel"/>
+            </CustomTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+    <Resources>
+      <bt:Images>
+        <bt:Image id="Icon.Concept.16x16" DefaultValue="https://www.contoso.com/assets/icon-concept-16.png"/>
+        <bt:Image id="Icon.Concept.32x32" DefaultValue="https://www.contoso.com/assets/icon-concept-32.png"/>
+        <bt:Image id="Icon.Concept.80x80" DefaultValue="https://www.contoso.com/assets/icon-concept-80.png"/>
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="taskpaneUrl" DefaultValue="https://www.contoso.com/taskpane.html"/>
+        <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://go.microsoft.com/fwlink/?LinkId=276812"/>
+        <bt:Url id="Commands.Url" DefaultValue="https://www.contoso.com/commands.html"/>
+        <bt:Url id="Taskpane.Url" DefaultValue="https://www.contoso.com/taskpane.html"/>
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="MW.Tab.TabLabel" DefaultValue="Musicworks"/>
+        <bt:String id="GetStarted.Title" DefaultValue="Get started with your sample add-in!"/>
+        <bt:String id="MW.Automate.GroupLabel" DefaultValue="Konzepte"/>
+        <bt:String id="MW.ConceptButton.Label" DefaultValue="Erstelle Konzept"/>
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="GetStarted.Description" DefaultValue="Your neat sample add-in loaded successfully. Go to the HOME tab and click the 'Show Task Pane' button to get started."/>
+        <bt:String id="MW.ConceptButton.Tooltip" DefaultValue="Klicken um Konzept zu erstellen"/>
+      </bt:LongStrings>
+    </Resources>
+    <WebApplicationInfo>
+      <Id>60d4020c-121b-4c12-a8a8-1a0fff375e02</Id>
+      <Resource>api://localhost:3000/60d4020c-121b-4c12-a8a8-1a0fff375e02</Resource>
+      <Scopes>
+        <Scope>Files.ReadWrite</Scope>
+        <Scope>Files.ReadWrite.All</Scope>
+        <Scope>Sites.ReadWrite.All</Scope>
+        <Scope>User.Read</Scope>
+      </Scopes>
+    </WebApplicationInfo>
+  </VersionOverrides>
+</OfficeApp>
