@@ -45,10 +45,10 @@ function sendDataToServer() {
                     "extraclick1", "extraclick2", "extraclick3", "extraclick4", "extraclick5"
                 ];
                 
-                // Checkboxen-Namen für spätere Verarbeitung
-                const checkboxNames = ["pa", "extraclick1", "extraclick2", "extraclick3", "extraclick4", "extraclick5"];
+                // Dropdown-Menü-Namen (vorher Checkboxen)
+                const dropdownNames = ["pa", "extraclick1", "extraclick2", "extraclick3", "extraclick4", "extraclick5"];
                 
-                // Funktionen zum Laden der benannten Bereiche und Checkboxen
+                // Funktionen zum Laden der benannten Bereiche und Dropdowns
                 var namedItems = context.workbook.names;
                 namedItems.load("items/name, items/type");
                 
@@ -84,7 +84,7 @@ function sendDataToServer() {
                                 namesToProcess.push({
                                     name: namedItems.items[niIndex].name,
                                     functionName: fnName,
-                                    isCheckbox: checkboxNames.includes(fnName)
+                                    isDropdown: dropdownNames.includes(fnName)
                                 });
                                 break;
                             }
@@ -112,15 +112,15 @@ function sendDataToServer() {
                     format: processedData.format
                 };
                 
-                // Für alle anderen Felder: Checkbox-Werte als Boolean, alles andere als String
-                const checkboxNames = ["pa", "extraclick1", "extraclick2", "extraclick3", "extraclick4", "extraclick5"];
+                // Für alle anderen Felder: Dropdown-Werte als Boolean, alles andere als String
+                const dropdownNames = ["pa", "extraclick1", "extraclick2", "extraclick3", "extraclick4", "extraclick5"];
                 
                 Object.keys(processedData).forEach(function(key) {
                     // format und ws_format wurden bereits behandelt
                     if (key !== 'format' && key !== 'ws_format') {
                         if (processedData[key] !== null && processedData[key] !== undefined) {
-                            if (checkboxNames.includes(key)) {
-                                // Checkbox-Werte als Boolean behalten
+                            if (dropdownNames.includes(key)) {
+                                // Dropdown-Werte als Boolean behalten
                                 requestData[key] = processedData[key];
                             } else {
                                 // Alle anderen Werte explizit zu Strings konvertieren
@@ -220,9 +220,18 @@ function processNamedItems(context, itemList, data, index) {
                 try {
                     var value = range.values[0][0];
                     if (value !== null && value !== undefined) {
-                        if (item.isCheckbox) {
-                            // Checkbox-Werte als Boolean
-                            value = value === true || value === "ja" || value === "yes" || value === 1;
+                        if (item.isDropdown) {
+                            // Dropdown-Werte als Boolean interpretieren basierend auf dem ausgewählten Text
+                            // Wir nehmen an, dass "Ja", "Yes", "Wahr", "True" oder "1" als true gelten
+                            if (typeof value === 'string') {
+                                value = value.toLowerCase() === "ja" || 
+                                       value.toLowerCase() === "yes" || 
+                                       value.toLowerCase() === "wahr" ||
+                                       value.toLowerCase() === "true" || 
+                                       value === "1";
+                            } else {
+                                value = Boolean(value);
+                            }
                         }
                         
                         // Wert direkt unter dem Funktionsnamen speichern
