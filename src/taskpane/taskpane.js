@@ -13,33 +13,7 @@ Office.initialize = function (reason) {
         showStatus("Add-In geladen und bereit.");
     });
 };
-/* Extrahiert den Dateinamen aus dem Content-Disposition-Header
- * @param {string} contentDisposition - Der Content-Disposition-Header
- * @returns {string|null} - Der extrahierte Dateiname oder null
- */
-function getFilenameFromHeader(contentDisposition) {
-    if (!contentDisposition) return null;
-    
-    // Regex für verschiedene Content-Disposition-Formate
-    // Beispiel: attachment; filename="example.pptx"
-    // Beispiel: attachment; filename*=UTF-8''example%20with%20spaces.pptx
-    
-    // Standard-Format
-    let matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(contentDisposition);
-    if (matches && matches[1]) {
-        // Anführungszeichen entfernen, falls vorhanden
-        return matches[1].replace(/['"]/g, '').trim();
-    }
-    
-    // UTF-8 Format
-    matches = /filename\*=UTF-8''([^;]*)/.exec(contentDisposition);
-    if (matches && matches[1]) {
-        // URL-Dekodierung für Sonderzeichen und Leerzeichen
-        return decodeURIComponent(matches[1].trim());
-    }
-    
-    return null;
-}
+
 /**
  * Liest Daten aus Excel und sendet sie an den Server
  */
@@ -71,10 +45,10 @@ function sendDataToServer() {
                     "extraclick1", "extraclick2", "extraclick3", "extraclick4", "extraclick5"
                 ];
                 
-                // Dropdown-Menü-Namen (vorher Checkboxen)
-                const dropdownNames = ["pa", "extraclick1", "extraclick2", "extraclick3", "extraclick4", "extraclick5"];
+                // Checkboxen-Namen für spätere Verarbeitung
+                const checkboxNames = ["pa", "extraclick1", "extraclick2", "extraclick3", "extraclick4", "extraclick5"];
                 
-                // Funktionen zum Laden der benannten Bereiche und Dropdowns
+                // Funktionen zum Laden der benannten Bereiche und Checkboxen
                 var namedItems = context.workbook.names;
                 namedItems.load("items/name, items/type");
                 
@@ -110,7 +84,7 @@ function sendDataToServer() {
                                 namesToProcess.push({
                                     name: namedItems.items[niIndex].name,
                                     functionName: fnName,
-                                    isDropdown: dropdownNames.includes(fnName)
+                                    isCheckbox: checkboxNames.includes(fnName)
                                 });
                                 break;
                             }
@@ -138,15 +112,15 @@ function sendDataToServer() {
                     format: processedData.format
                 };
                 
-                // Für alle anderen Felder: Dropdown-Werte als Boolean, alles andere als String
-                const dropdownNames = ["pa", "extraclick1", "extraclick2", "extraclick3", "extraclick4", "extraclick5"];
+                // Für alle anderen Felder: Checkbox-Werte als Boolean, alles andere als String
+                const checkboxNames = ["pa", "extraclick1", "extraclick2", "extraclick3", "extraclick4", "extraclick5"];
                 
                 Object.keys(processedData).forEach(function(key) {
                     // format und ws_format wurden bereits behandelt
                     if (key !== 'format' && key !== 'ws_format') {
                         if (processedData[key] !== null && processedData[key] !== undefined) {
-                            if (dropdownNames.includes(key)) {
-                                // Dropdown-Werte als Boolean behalten
+                            if (checkboxNames.includes(key)) {
+                                // Checkbox-Werte als Boolean behalten
                                 requestData[key] = processedData[key];
                             } else {
                                 // Alle anderen Werte explizit zu Strings konvertieren
@@ -189,29 +163,21 @@ function sendDataToServer() {
                     if (result.type === 'json') {
                         // JSON-Antwort mit Links zu beiden Dateien
                         const data = result.data;
-                        const serverUrl = new URL(apiUrl).origin;
+                        
+                        // Download-Links für beide Dateien erstellen
+                        const serverUrl = new URL(apiUrl).origin; // Basis-URL des Servers
                         const pptxUrl = serverUrl + data.pptx_url;
                         const pdfUrl = serverUrl + data.pdf_url;
                         
-                        // URLs auf den Server abfragen, um die Dateinamen zu erhalten
-                        Promise.all([
-                            fetch(pptxUrl, { method: 'HEAD' }),
-                            fetch(pdfUrl, { method: 'HEAD' })
-                        ]).then(responses => {
-                            // Dateinamen aus Content-Disposition extrahieren
-                            const pptxFilename = getFilenameFromHeader(responses[0].headers.get('content-disposition')) || 'praesentation.pptx';
-                            const pdfFilename = getFilenameFromHeader(responses[1].headers.get('content-disposition')) || 'praesentation.pdf';
-                            
-                            // Download-Links mit den extrahierten Dateinamen erstellen
-                            createDownloadLinks(pptxUrl, pdfUrl, pptxFilename, pdfFilename);
-                            
-                            showStatus("Dateien bereit zum Download.", "success");
-                        });
+                        console.log("Download-URLs:", { pptx: pptxUrl, pdf: pdfUrl });
+                        
+                        // Download-Links im UI anzeigen
+                        createDownloadLinks(pptxUrl, pdfUrl);
+                        
+                        showStatus("Dateien bereit zum Download.", "success");
                     } else {
                         // Direkter Blob-Download (einzelne Datei)
                         const blob = result.data;
-                        
-                        // Dateiname aus Content-Disposition-Header extrahieren
                         const filename = getFilenameFromContentType(
                             blob.type, 
                             response.headers.get('content-disposition')
@@ -223,7 +189,7 @@ function sendDataToServer() {
                         
                         showStatus("Datei bereit zum Download.", "success");
                     }
-                })
+                });
             })
             .catch(error => {
                 showStatus("Fehler bei der Verarbeitung: " + error.message, "error");
@@ -254,18 +220,9 @@ function processNamedItems(context, itemList, data, index) {
                 try {
                     var value = range.values[0][0];
                     if (value !== null && value !== undefined) {
-                        if (item.isDropdown) {
-                            // Dropdown-Werte als Boolean interpretieren basierend auf dem ausgewählten Text
-                            // Wir nehmen an, dass "Ja", "Yes", "Wahr", "True" oder "1" als true gelten
-                            if (typeof value === 'string') {
-                                value = value.toLowerCase() === "ja" || 
-                                       value.toLowerCase() === "yes" || 
-                                       value.toLowerCase() === "wahr" ||
-                                       value.toLowerCase() === "true" || 
-                                       value === "1";
-                            } else {
-                                value = Boolean(value);
-                            }
+                        if (item.isCheckbox) {
+                            // Checkbox-Werte als Boolean
+                            value = value === true || value === "ja" || value === "yes" || value === 1;
                         }
                         
                         // Wert direkt unter dem Funktionsnamen speichern
@@ -314,7 +271,7 @@ function getTestData() {
 /**
  * Erstellt Download-Links für PPTX und PDF
  */
-function createDownloadLinks(pptxUrl, pdfUrl, pptxFilename, pdfFilename) {
+function createDownloadLinks(pptxUrl, pdfUrl) {
     // Container für Download-Links finden oder erstellen
     var downloadContainer = document.getElementById('downloadContainer');
     
@@ -325,20 +282,20 @@ function createDownloadLinks(pptxUrl, pdfUrl, pptxFilename, pdfFilename) {
     var pptxLink = document.createElement('a');
     pptxLink.href = pptxUrl;
     pptxLink.className = 'download-button pptx-button';
-    pptxLink.textContent = 'PowerPoint-Präsentation herunterladen';
-    pptxLink.download = pptxFilename || 'praesentation.pptx'; // Fallback-Name
+    pptxLink.textContent = 'PowerPoint Download';
+    pptxLink.download = 'praesentation.pptx';
     
     // PDF-Link erstellen
     var pdfLink = document.createElement('a');
     pdfLink.href = pdfUrl;
     pdfLink.className = 'download-button pdf-button';
-    pdfLink.textContent = 'PDF-Version herunterladen';
-    pdfLink.download = pdfFilename || 'praesentation.pdf'; // Fallback-Name
+    pdfLink.textContent = 'PDF Download';
+    pdfLink.download = 'praesentation.pdf';
     
     // Info-Text
     var infoText = document.createElement('p');
     infoText.className = 'download-info';
-    infoText.textContent = 'Klicken Sie auf die Buttons, um die Dateien herunterzuladen.';
+    infoText.textContent = 'Klicke mit Rechtsklick auf die Buttons und wähle "Link speichern unter" um die Dateien herunterzuladen.';
     
     // Links zum Container hinzufügen
     downloadContainer.appendChild(pptxLink);
@@ -363,7 +320,6 @@ function createSingleDownloadLink(url, filename) {
     var downloadLink = document.createElement('a');
     downloadLink.href = url;
     downloadLink.className = 'download-button';
-    downloadLink.download = filename || 'praesentation'; // Fallback-Name
     
     // Button-Klasse basierend auf Dateityp setzen
     if (filename.endsWith('.pptx')) {
@@ -375,6 +331,8 @@ function createSingleDownloadLink(url, filename) {
     } else {
         downloadLink.textContent = 'Datei herunterladen';
     }
+    
+    downloadLink.download = filename;
     
     // Info-Text
     var infoText = document.createElement('p');
