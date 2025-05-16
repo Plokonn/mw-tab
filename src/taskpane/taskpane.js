@@ -13,7 +13,33 @@ Office.initialize = function (reason) {
         showStatus("Add-In geladen und bereit.");
     });
 };
-
+/* Extrahiert den Dateinamen aus dem Content-Disposition-Header
+ * @param {string} contentDisposition - Der Content-Disposition-Header
+ * @returns {string|null} - Der extrahierte Dateiname oder null
+ */
+function getFilenameFromHeader(contentDisposition) {
+    if (!contentDisposition) return null;
+    
+    // Regex für verschiedene Content-Disposition-Formate
+    // Beispiel: attachment; filename="example.pptx"
+    // Beispiel: attachment; filename*=UTF-8''example%20with%20spaces.pptx
+    
+    // Standard-Format
+    let matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(contentDisposition);
+    if (matches && matches[1]) {
+        // Anführungszeichen entfernen, falls vorhanden
+        return matches[1].replace(/['"]/g, '').trim();
+    }
+    
+    // UTF-8 Format
+    matches = /filename\*=UTF-8''([^;]*)/.exec(contentDisposition);
+    if (matches && matches[1]) {
+        // URL-Dekodierung für Sonderzeichen und Leerzeichen
+        return decodeURIComponent(matches[1].trim());
+    }
+    
+    return null;
+}
 /**
  * Liest Daten aus Excel und sendet sie an den Server
  */
@@ -163,21 +189,29 @@ function sendDataToServer() {
                     if (result.type === 'json') {
                         // JSON-Antwort mit Links zu beiden Dateien
                         const data = result.data;
-                        
-                        // Download-Links für beide Dateien erstellen
-                        const serverUrl = new URL(apiUrl).origin; // Basis-URL des Servers
+                        const serverUrl = new URL(apiUrl).origin;
                         const pptxUrl = serverUrl + data.pptx_url;
                         const pdfUrl = serverUrl + data.pdf_url;
                         
-                        console.log("Download-URLs:", { pptx: pptxUrl, pdf: pdfUrl });
-                        
-                        // Download-Links im UI anzeigen
-                        createDownloadLinks(pptxUrl, pdfUrl);
-                        
-                        showStatus("Dateien bereit zum Download.", "success");
+                        // URLs auf den Server abfragen, um die Dateinamen zu erhalten
+                        Promise.all([
+                            fetch(pptxUrl, { method: 'HEAD' }),
+                            fetch(pdfUrl, { method: 'HEAD' })
+                        ]).then(responses => {
+                            // Dateinamen aus Content-Disposition extrahieren
+                            const pptxFilename = getFilenameFromHeader(responses[0].headers.get('content-disposition')) || 'praesentation.pptx';
+                            const pdfFilename = getFilenameFromHeader(responses[1].headers.get('content-disposition')) || 'praesentation.pdf';
+                            
+                            // Download-Links mit den extrahierten Dateinamen erstellen
+                            createDownloadLinks(pptxUrl, pdfUrl, pptxFilename, pdfFilename);
+                            
+                            showStatus("Dateien bereit zum Download.", "success");
+                        });
                     } else {
                         // Direkter Blob-Download (einzelne Datei)
                         const blob = result.data;
+                        
+                        // Dateiname aus Content-Disposition-Header extrahieren
                         const filename = getFilenameFromContentType(
                             blob.type, 
                             response.headers.get('content-disposition')
@@ -189,7 +223,7 @@ function sendDataToServer() {
                         
                         showStatus("Datei bereit zum Download.", "success");
                     }
-                });
+                })
             })
             .catch(error => {
                 showStatus("Fehler bei der Verarbeitung: " + error.message, "error");
@@ -280,7 +314,7 @@ function getTestData() {
 /**
  * Erstellt Download-Links für PPTX und PDF
  */
-function createDownloadLinks(pptxUrl, pdfUrl) {
+function createDownloadLinks(pptxUrl, pdfUrl, pptxFilename, pdfFilename) {
     // Container für Download-Links finden oder erstellen
     var downloadContainer = document.getElementById('downloadContainer');
     
@@ -291,20 +325,20 @@ function createDownloadLinks(pptxUrl, pdfUrl) {
     var pptxLink = document.createElement('a');
     pptxLink.href = pptxUrl;
     pptxLink.className = 'download-button pptx-button';
-    pptxLink.textContent = 'PowerPoint Download';
-    pptxLink.download = 'praesentation.pptx';
+    pptxLink.textContent = 'PowerPoint-Präsentation herunterladen';
+    pptxLink.download = pptxFilename || 'praesentation.pptx'; // Fallback-Name
     
     // PDF-Link erstellen
     var pdfLink = document.createElement('a');
     pdfLink.href = pdfUrl;
     pdfLink.className = 'download-button pdf-button';
-    pdfLink.textContent = 'PDF Download';
-    pdfLink.download = 'praesentation.pdf';
+    pdfLink.textContent = 'PDF-Version herunterladen';
+    pdfLink.download = pdfFilename || 'praesentation.pdf'; // Fallback-Name
     
     // Info-Text
     var infoText = document.createElement('p');
     infoText.className = 'download-info';
-    infoText.textContent = 'Klicke mit Rechtsklick auf die Buttons und wähle "Link speichern unter" um die Dateien herunterzuladen.';
+    infoText.textContent = 'Klicken Sie auf die Buttons, um die Dateien herunterzuladen.';
     
     // Links zum Container hinzufügen
     downloadContainer.appendChild(pptxLink);
@@ -329,6 +363,7 @@ function createSingleDownloadLink(url, filename) {
     var downloadLink = document.createElement('a');
     downloadLink.href = url;
     downloadLink.className = 'download-button';
+    downloadLink.download = filename || 'praesentation'; // Fallback-Name
     
     // Button-Klasse basierend auf Dateityp setzen
     if (filename.endsWith('.pptx')) {
@@ -340,8 +375,6 @@ function createSingleDownloadLink(url, filename) {
     } else {
         downloadLink.textContent = 'Datei herunterladen';
     }
-    
-    downloadLink.download = filename;
     
     // Info-Text
     var infoText = document.createElement('p');
